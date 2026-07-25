@@ -82,6 +82,14 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: /Turn document images into editable text/i })).toBeInTheDocument();
   });
 
+  it("renders a link to the main website in the sticky footer", () => {
+    render(<App />);
+
+    expect(
+      screen.getByRole("link", { name: "Visit Louis Paulet's main website" }),
+    ).toHaveAttribute("href", "https://louispaulet.github.io/");
+  });
+
   it("submits files and copies the OCR result", async () => {
     const user = userEvent.setup();
     const clipboardWrite = vi.spyOn(navigator.clipboard, "writeText");

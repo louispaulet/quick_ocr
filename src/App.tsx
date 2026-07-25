@@ -560,11 +560,33 @@ function SiteHeader() {
   );
 }
 
+function SiteFooter() {
+  return (
+    <footer className="mt-auto border-t border-slate-200/80 bg-white/80">
+      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 px-5 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:px-8">
+        <p>Quick OCR · AI-powered document text extraction</p>
+        <a
+          aria-label="Visit Louis Paulet's main website"
+          className="font-semibold text-indigo-600 transition hover:text-indigo-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600"
+          href="https://louispaulet.github.io/"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Main website <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </footer>
+  );
+}
+
 function SiteLayout() {
   return (
-    <div className="min-h-screen bg-[#f6f7fb] text-slate-950">
+    <div className="flex min-h-screen flex-col bg-[#f6f7fb] text-slate-950">
       <SiteHeader />
-      <Outlet />
+      <div className="flex-1">
+        <Outlet />
+      </div>
+      <SiteFooter />
     </div>
   );
 }
