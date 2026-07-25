@@ -26,6 +26,7 @@ function image(name: string, content = "image") {
 
 describe("App", () => {
   beforeEach(() => {
+    window.location.hash = "";
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: createObjectURL,
@@ -63,6 +64,22 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Remove page-one.png" }));
     expect(screen.queryByText("page-one.png")).not.toBeInTheDocument();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:page-one.png");
+  });
+
+  it("opens the About page from the navbar", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("link", { name: "About" }));
+
+    expect(
+      screen.getByRole("heading", { name: "A quick path from document images to usable text." }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("gpt-5.6-luna")).toBeInTheDocument();
+    expect(screen.getByText(/working demonstration of an OCR and translation flow/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Back to Quick OCR" }));
+    expect(screen.getByRole("heading", { name: /Turn document images into editable text/i })).toBeInTheDocument();
   });
 
   it("submits files and copies the OCR result", async () => {

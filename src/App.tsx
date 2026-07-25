@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  HashRouter,
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+} from "react-router-dom";
+import AboutPage from "./About";
+import {
   MAX_FILE_BYTES,
   MAX_FILE_COUNT,
   MAX_TOTAL_BYTES,
@@ -92,7 +101,7 @@ function CopyIcon() {
   );
 }
 
-function App() {
+function OcrPage() {
   const [pages, setPages] = useState<SelectedPage[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -228,25 +237,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f7fb] text-slate-950">
-      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200">
-              <DocumentIcon />
-            </div>
-            <div>
-              <p className="text-lg font-semibold tracking-tight">Quick OCR</p>
-              <p className="text-xs text-slate-500">Document text extraction</p>
-            </div>
-          </div>
-          <span className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-            Powered by OpenAI
-          </span>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+    <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
         <section className="mb-8 max-w-2xl">
           <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
             Image to text
@@ -537,8 +528,58 @@ function App() {
             </div>
           </section>
         </div>
-      </main>
+    </main>
+  );
+}
+
+function SiteHeader() {
+  return (
+    <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
+        <Link
+          aria-label="Quick OCR home"
+          className="flex items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600"
+          to="/"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-200">
+            <DocumentIcon />
+          </div>
+          <div>
+            <p className="text-lg font-semibold tracking-tight">Quick OCR</p>
+            <p className="text-xs text-slate-500">Document text extraction</p>
+          </div>
+        </Link>
+        <Link
+          className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:border-indigo-200 hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          to="/about"
+        >
+          About
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+function SiteLayout() {
+  return (
+    <div className="min-h-screen bg-[#f6f7fb] text-slate-950">
+      <SiteHeader />
+      <Outlet />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <HashRouter>
+      <Routes>
+        <Route element={<SiteLayout />}>
+          <Route index element={<OcrPage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </Route>
+      </Routes>
+    </HashRouter>
   );
 }
 
