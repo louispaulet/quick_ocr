@@ -6,7 +6,11 @@ import {
   formatFileSize,
   validateFiles,
 } from "./lib/files";
-import { OcrRequestError, requestOcr } from "./lib/ocr-api";
+import {
+  OcrRequestError,
+  requestOcr,
+  type OutputLanguage,
+} from "./lib/ocr-api";
 
 interface SelectedPage {
   id: number;
@@ -94,11 +98,16 @@ function App() {
   const [validationError, setValidationError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [resultText, setResultText] = useState("");
+  const [outputLanguage, setOutputLanguage] =
+    useState<OutputLanguage>("original");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy text");
   const inputRef = useRef<HTMLInputElement>(null);
   const pagesRef = useRef<SelectedPage[]>([]);
+  const isTranslating = outputLanguage !== "original";
+  const actionLabel = isTranslating ? "Extract and translate" : "Extract text";
+  const resultLabel = isTranslating ? "Translated" : "Extracted";
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -188,7 +197,10 @@ function App() {
     setIsTruncated(false);
 
     try {
-      const result = await requestOcr(files, controller.signal);
+      const result = await requestOcr(files, {
+        outputLanguage,
+        signal: controller.signal,
+      });
       setResultText(result.text);
       setIsTruncated(result.truncated);
     } catch (caught) {
@@ -243,8 +255,8 @@ function App() {
             Turn document images into editable text.
           </h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            Add up to five page images, arrange them in reading order, and extract a
-            clean transcript in one pass.
+            Add up to five page images, arrange them in reading order, and extract or
+            translate a clean transcript in one pass.
           </p>
         </section>
 
@@ -330,6 +342,36 @@ function App() {
               />
             </div>
 
+            <div className="mt-5">
+              <label
+                className="text-sm font-semibold text-slate-800"
+                htmlFor="output-language"
+              >
+                Output language
+              </label>
+              <select
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 disabled:cursor-not-allowed disabled:bg-slate-100"
+                disabled={isSubmitting}
+                id="output-language"
+                onChange={(event) => {
+                  setOutputLanguage(event.target.value as OutputLanguage);
+                  setRequestError("");
+                  setResultText("");
+                  setIsTruncated(false);
+                  setCopyLabel("Copy text");
+                }}
+                value={outputLanguage}
+              >
+                <option value="original">Original language (no translation)</option>
+                <option value="en">English</option>
+                <option value="fr">French</option>
+              </select>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Preserve the source language or translate the complete document while
+                keeping its structure.
+              </p>
+            </div>
+
             {validationError && (
               <p
                 className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
@@ -412,7 +454,7 @@ function App() {
               ) : (
                 <>
                   <DocumentIcon />
-                  Extract text
+                  {actionLabel}
                 </>
               )}
             </button>
@@ -425,7 +467,7 @@ function App() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 id="result-heading" className="text-lg font-semibold">
-                  Extracted text
+                  {resultLabel} text
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Review, edit, and copy the transcript.
@@ -463,13 +505,15 @@ function App() {
 
             <div className="relative flex min-h-0 flex-1">
               <textarea
-                aria-label="Extracted document text"
+                aria-label={`${resultLabel} document text`}
                 className="min-h-[420px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50"
                 onChange={(event) => setResultText(event.target.value)}
                 placeholder={
                   isSubmitting
-                    ? "Reading your document…"
-                    : "Your extracted text will appear here."
+                    ? isTranslating
+                      ? "Reading and translating your document…"
+                      : "Reading your document…"
+                    : `Your ${resultLabel.toLowerCase()} text will appear here.`
                 }
                 readOnly={isSubmitting}
                 value={resultText}
@@ -482,9 +526,13 @@ function App() {
             </p>
             <div className="sr-only" aria-live="polite">
               {isSubmitting
-                ? "OCR is in progress."
+                ? isTranslating
+                  ? "OCR and translation are in progress."
+                  : "OCR is in progress."
                 : resultText
-                  ? "OCR is complete."
+                  ? isTranslating
+                    ? "OCR and translation are complete."
+                    : "OCR is complete."
                   : requestError || validationError}
             </div>
           </section>

@@ -14,6 +14,7 @@ These instructions apply to the entire repository.
 - Use TypeScript for application and Worker code.
 - Keep browser-only code out of `worker/` and Worker-only bindings out of `src/`.
 - Keep the OpenAI request on the Worker. Never expose API credentials to the browser.
+- Regenerate `worker/env.d.ts` with `npm run worker:types` after changing Worker bindings.
 - Prefer small, testable helpers for validation and external API boundaries.
 - Preserve accessible labels, keyboard behavior, focus states, and live status messages when changing the UI.
 - Do not add persistence, authentication, or new Cloudflare services without an explicit request.

@@ -49,6 +49,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
+    expect(screen.getByLabelText("Output language")).toHaveValue("original");
     const input = screen.getByLabelText("Choose document page images");
     await user.upload(input, [image("page-one.png"), image("page-two.png")]);
 
@@ -84,11 +85,17 @@ describe("App", () => {
       screen.getByLabelText("Choose document page images"),
       page,
     );
-    await user.click(screen.getByRole("button", { name: "Extract text" }));
+    await user.selectOptions(screen.getByLabelText("Output language"), "fr");
+    await user.click(
+      screen.getByRole("button", { name: "Extract and translate" }),
+    );
 
     await waitFor(() => {
       expect(requestOcrMock).toHaveBeenCalledOnce();
-      expect(requestOcrMock).toHaveBeenCalledWith([page], expect.any(AbortSignal));
+      expect(requestOcrMock).toHaveBeenCalledWith([page], {
+        outputLanguage: "fr",
+        signal: expect.any(AbortSignal),
+      });
     });
 
     expect(
@@ -105,12 +112,12 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "Extract text" }),
+        screen.getByRole("button", { name: "Extract and translate" }),
       ).not.toBeDisabled();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByLabelText("Extracted document text")).toHaveValue(
+      expect(screen.getByLabelText("Translated document text")).toHaveValue(
         "--- Page 1 ---\nHello world",
       );
     });

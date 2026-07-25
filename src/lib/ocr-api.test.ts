@@ -17,12 +17,13 @@ describe("requestOcr", () => {
 
     const first = new File(["one"], "one.png", { type: "image/png" });
     const second = new File(["two"], "two.png", { type: "image/png" });
-    const result = await requestOcr([first, second]);
+    const result = await requestOcr([first, second], { outputLanguage: "fr" });
 
     expect(result.pageCount).toBe(2);
     const [, options] = fetchMock.mock.calls[0];
     const body = options.body as FormData;
     expect(body.getAll("files")).toEqual([first, second]);
+    expect(body.get("outputLanguage")).toBe("fr");
   });
 
   it("returns the safe API error message", async () => {

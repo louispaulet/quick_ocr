@@ -1,6 +1,6 @@
 # Quick OCR
 
-Quick OCR is a small full-stack application that extracts editable text from document page images. The browser provides an ordered drag-and-drop workflow, and a Cloudflare Worker sends the pages to OpenAI's multimodal Responses API for transcription.
+Quick OCR is a small full-stack application that extracts editable text from document page images and can translate the result into English or French. The browser provides an ordered drag-and-drop workflow, and a Cloudflare Worker sends the pages to OpenAI's multimodal Responses API for transcription and optional translation.
 
 The frontend and API ship together as one Cloudflare Worker deployment:
 
@@ -18,6 +18,7 @@ OpenAI Responses API
 
 - Drag, browse, preview, reorder, and remove document pages.
 - Process up to five ordered PNG, JPG, or WebP images.
+- Preserve the document's original language or translate the result into English or French.
 - Preserve headings, paragraphs, lists, line breaks, and readable table structure.
 - Edit and copy the resulting transcript.
 - Keep the OpenAI API key entirely on the Worker.
@@ -67,6 +68,7 @@ The terminal prints the local URL, normally `http://localhost:5173`.
 | `npm run dev` | Run the React app and Worker API with hot reload |
 | `npm run lint` | Run Oxlint |
 | `npm run typecheck` | Type-check browser, configuration, and Worker code |
+| `npm run worker:types` | Regenerate Worker binding types from `wrangler.jsonc` |
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run build` | Type-check and produce the Cloudflare deployment bundle |
@@ -86,14 +88,15 @@ The application does not resize pages before OCR. Clear, upright images with leg
 
 ### `POST /api/ocr`
 
-Send `multipart/form-data` with one `files` field per page. Repeated fields are processed in their submitted order.
+Send `multipart/form-data` with one `files` field per page. Repeated fields are processed in their submitted order. Set the optional `outputLanguage` field to `original`, `en`, or `fr`; it defaults to `original`.
 
 Example:
 
 ```sh
 curl http://localhost:5173/api/ocr \
   -F "files=@page-1.png" \
-  -F "files=@page-2.png"
+  -F "files=@page-2.png" \
+  -F "outputLanguage=fr"
 ```
 
 Successful response:

@@ -2,6 +2,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildOcrPrompt,
   handleOcrRequest,
   type OcrGateway,
   type OcrGatewayFactory,
@@ -13,9 +14,10 @@ function page(name = "page.png", size = 4, type = "image/png") {
   return new File([new Uint8Array(size)], name, { type });
 }
 
-function requestWith(files: File[]) {
+function requestWith(files: File[], outputLanguage?: string) {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file, file.name));
+  if (outputLanguage) formData.set("outputLanguage", outputLanguage);
   return new Request("https://example.com/api/ocr", {
     method: "POST",
     body: formData,
@@ -50,6 +52,49 @@ describe("handleOcrRequest", () => {
     });
     expect(extract).toHaveBeenCalledOnce();
     expect(extract.mock.calls[0][0]).toHaveLength(2);
+    expect(extract.mock.calls[0][1]).toBe("original");
+  });
+
+  it("passes the selected translation language to the OCR gateway", async () => {
+    const extract = vi.fn().mockResolvedValue({
+      text: "--- Page 1 ---\nBonjour",
+      truncated: false,
+    });
+    const response = await handleOcrRequest(
+      requestWith([page()], "fr"),
+      env,
+      factoryFor({ extract }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(extract).toHaveBeenCalledWith(expect.any(Array), "fr");
+  });
+
+  it("rejects an unsupported output language", async () => {
+    const createGateway = vi.fn();
+    const response = await handleOcrRequest(
+      requestWith([page()], "de"),
+      env,
+      createGateway,
+    );
+
+    expect(response.status).toBe(400);
+    expect((await errorBody(response)).error.code).toBe(
+      "INVALID_OUTPUT_LANGUAGE",
+    );
+    expect(createGateway).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["original", "Do not translate it."],
+    ["en", "into English"],
+    ["fr", "into French"],
+  ] as const)("builds the %s language prompt", (language, expectedText) => {
+    const prompt = buildOcrPrompt(2, language);
+
+    expect(prompt).toContain(expectedText);
+    expect(prompt).toContain("--- Page N ---");
+    expect(prompt).toContain("[unreadable]");
   });
 
   it("returns partial output with a truncation flag", async () => {

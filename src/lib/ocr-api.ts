@@ -4,6 +4,13 @@ export interface OcrSuccess {
   truncated: boolean;
 }
 
+export type OutputLanguage = "original" | "en" | "fr";
+
+interface OcrRequestOptions {
+  outputLanguage?: OutputLanguage;
+  signal?: AbortSignal;
+}
+
 interface OcrErrorPayload {
   error?: {
     code?: string;
@@ -25,10 +32,12 @@ export class OcrRequestError extends Error {
 
 export async function requestOcr(
   files: File[],
-  signal?: AbortSignal,
+  options: OcrRequestOptions = {},
 ): Promise<OcrSuccess> {
+  const { outputLanguage = "original", signal } = options;
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file, file.name));
+  formData.set("outputLanguage", outputLanguage);
 
   const response = await fetch("/api/ocr", {
     method: "POST",

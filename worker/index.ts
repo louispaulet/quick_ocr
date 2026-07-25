@@ -9,10 +9,9 @@ const ACCEPTED_IMAGE_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
+const OUTPUT_LANGUAGES = new Set(["original", "en", "fr"]);
 
-interface Env {
-  OPENAI_API_KEY: string;
-}
+export type OutputLanguage = "original" | "en" | "fr";
 
 interface EncodedImage {
   dataUrl: string;
@@ -25,7 +24,10 @@ interface GatewayResult {
 }
 
 export interface OcrGateway {
-  extract(images: EncodedImage[]): Promise<GatewayResult>;
+  extract(
+    images: EncodedImage[],
+    outputLanguage: OutputLanguage,
+  ): Promise<GatewayResult>;
 }
 
 export type OcrGatewayFactory = (apiKey: string) => OcrGateway;
@@ -58,6 +60,27 @@ function errorResponse(error: SafeError) {
   );
 }
 
+export function buildOcrPrompt(
+  pageCount: number,
+  outputLanguage: OutputLanguage,
+) {
+  const languageInstruction = {
+    original:
+      "Keep every transcribed passage in its source language. Do not translate it.",
+    en: "Translate all natural-language content into English. Preserve the original meaning and tone, and keep proper names, identifiers, numbers, dates, currency values, URLs, and email addresses accurate.",
+    fr: "Translate all natural-language content into French. Preserve the original meaning and tone, and keep proper names, identifiers, numbers, dates, currency values, URLs, and email addresses accurate.",
+  }[outputLanguage];
+
+  return [
+    `Transcribe all visible text from these ${pageCount} document page image${pageCount === 1 ? "" : "s"} in the exact order provided.`,
+    "Preserve reading order, headings, paragraphs, line breaks, lists, and tables. Use Markdown tables when the visual table structure is clear.",
+    "Begin every page with a separator exactly formatted as `--- Page N ---`, replacing N with its 1-based page number.",
+    languageInstruction,
+    "Do not summarize, explain, correct, or add commentary. Do not wrap the result in a code fence.",
+    "Represent any illegible region as `[unreadable]`. Return only the completed document text.",
+  ].join("\n");
+}
+
 function createOpenAIGateway(apiKey: string): OcrGateway {
   const client = new OpenAI({
     apiKey,
@@ -66,14 +89,8 @@ function createOpenAIGateway(apiKey: string): OcrGateway {
   });
 
   return {
-    async extract(images) {
-      const prompt = [
-        `Transcribe all visible text from these ${images.length} document page image${images.length === 1 ? "" : "s"} in the exact order provided.`,
-        "Preserve reading order, headings, paragraphs, line breaks, lists, and tables. Use Markdown tables when the visual table structure is clear.",
-        "Begin every page with a separator exactly formatted as `--- Page N ---`, replacing N with its 1-based page number.",
-        "Do not summarize, explain, translate, correct, or add commentary. Do not wrap the transcript in a code fence.",
-        "Represent any illegible region as `[unreadable]`. Return only the transcription.",
-      ].join("\n");
+    async extract(images, outputLanguage) {
+      const prompt = buildOcrPrompt(images.length, outputLanguage);
 
       const response = await client.responses.create({
         model: "gpt-5.6-luna",
@@ -160,7 +177,7 @@ function inspectUpstreamError(error: unknown): SafeError {
 }
 
 async function parseAndValidateFiles(request: Request): Promise<
-  | { files: File[] }
+  | { files: File[]; outputLanguage: OutputLanguage }
   | {
       error: SafeError;
     }
@@ -209,6 +226,23 @@ async function parseAndValidateFiles(request: Request): Promise<
     };
   }
 
+  const outputLanguageValues = formData.getAll("outputLanguage");
+  const outputLanguageValue = outputLanguageValues[0] ?? "original";
+  if (
+    outputLanguageValues.length > 1 ||
+    typeof outputLanguageValue !== "string" ||
+    !OUTPUT_LANGUAGES.has(outputLanguageValue)
+  ) {
+    return {
+      error: {
+        status: 400,
+        code: "INVALID_OUTPUT_LANGUAGE",
+        message: "Output language must be original, English, or French.",
+      },
+    };
+  }
+  const outputLanguage = outputLanguageValue as OutputLanguage;
+
   const files = values as File[];
   let totalBytes = 0;
 
@@ -256,12 +290,12 @@ async function parseAndValidateFiles(request: Request): Promise<
     };
   }
 
-  return { files };
+  return { files, outputLanguage };
 }
 
 export async function handleOcrRequest(
   request: Request,
-  env: Env,
+  env: WorkerEnv,
   createGateway: OcrGatewayFactory = createOpenAIGateway,
 ): Promise<Response> {
   if (request.method !== "POST") {
@@ -293,7 +327,10 @@ export async function handleOcrRequest(
   );
 
   try {
-    const result = await createGateway(env.OPENAI_API_KEY).extract(images);
+    const result = await createGateway(env.OPENAI_API_KEY).extract(
+      images,
+      parsed.outputLanguage,
+    );
     if (!result.text) {
       return errorResponse({
         status: 502,
@@ -322,4 +359,4 @@ export default {
 
     return new Response(null, { status: 404 });
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<WorkerEnv>;
