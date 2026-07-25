@@ -1,9 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { OcrRequestError, requestOcr } from "./ocr-api";
+import { getApiBaseUrl, OcrRequestError, requestOcr } from "./ocr-api";
 
 describe("requestOcr", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("selects the local and production API bases", () => {
+    expect(getApiBaseUrl({ DEV: true })).toBe("");
+    expect(getApiBaseUrl({ DEV: false })).toBe(
+      "https://quick-ocr.louispaulet13.workers.dev",
+    );
+    expect(
+      getApiBaseUrl({
+        DEV: false,
+        VITE_API_BASE_URL: "https://example.com/",
+      }),
+    ).toBe("https://example.com");
   });
 
   it("posts ordered files as multipart form data", async () => {
@@ -20,7 +33,8 @@ describe("requestOcr", () => {
     const result = await requestOcr([first, second], { outputLanguage: "fr" });
 
     expect(result.pageCount).toBe(2);
-    const [, options] = fetchMock.mock.calls[0];
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/ocr$/);
     const body = options.body as FormData;
     expect(body.getAll("files")).toEqual([first, second]);
     expect(body.get("outputLanguage")).toBe("fr");

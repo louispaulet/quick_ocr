@@ -10,6 +10,12 @@ const ACCEPTED_IMAGE_TYPES = new Set([
   "image/webp",
 ]);
 const OUTPUT_LANGUAGES = new Set(["original", "en", "fr"]);
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
 
 export type OutputLanguage = "original" | "en" | "fr";
 type TranslationLanguage = Exclude<OutputLanguage, "original">;
@@ -44,6 +50,7 @@ function json(body: unknown, status = 200, headers?: HeadersInit) {
     status,
     headers: {
       "Cache-Control": "no-store",
+      ...CORS_HEADERS,
       ...headers,
     },
   });
@@ -344,6 +351,10 @@ export async function handleOcrRequest(
   env: WorkerEnv,
   createGateway: OcrGatewayFactory = createOpenAIGateway,
 ): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (request.method !== "POST") {
     return errorResponse({
       status: 405,

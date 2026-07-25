@@ -1,14 +1,14 @@
 # Quick OCR
 
-Quick OCR is a small full-stack application that extracts editable text from document page images and can translate the result into English or French. The browser provides an ordered drag-and-drop workflow, and a Cloudflare Worker sends the pages to OpenAI's multimodal Responses API for transcription and optional translation.
+Quick OCR is a small full-stack application that extracts editable text from document page images and can translate the result into English or French. The browser provides an ordered drag-and-drop workflow, GitHub Pages hosts the static frontend, and a Cloudflare Worker sends the pages to OpenAI's multimodal Responses API for transcription and optional translation.
 
-The frontend and API ship together as one Cloudflare Worker deployment:
+The frontend and API are deployed separately:
 
 ```text
-Browser (React + Tailwind)
-        │ multipart/form-data
+GitHub Pages frontend
+        │ multipart/form-data over CORS
         ▼
-POST /api/ocr (Cloudflare Worker)
+POST https://quick-ocr.louispaulet13.workers.dev/api/ocr
         │ ordered image inputs
         ▼
 OpenAI vision response
@@ -29,6 +29,7 @@ OpenAI text response ───────────────────�
 - Preserve headings, paragraphs, lists, line breaks, and readable table structure.
 - Edit and copy the resulting transcript.
 - Keep the OpenAI API key entirely on the Worker.
+- Use HashRouter for GitHub Pages-safe client-side navigation.
 - Run the frontend and API together during local Vite development.
 
 ## Requirements
@@ -60,6 +61,8 @@ OPENAI_API_KEY=your_openai_api_key
 
 Never prefix this value with `VITE_`, put it in source code, or commit `.env`.
 
+The production frontend uses `https://quick-ocr.louispaulet13.workers.dev` as its API base URL. Set `VITE_API_BASE_URL` only when pointing a build at a different Worker; it is a public endpoint, not a secret.
+
 Start the combined Vite and Workers development server:
 
 ```sh
@@ -78,9 +81,12 @@ The terminal prints the local URL, normally `http://localhost:5173`.
 | `npm run worker:types` | Regenerate Worker binding types from `wrangler.jsonc` |
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Run tests in watch mode |
-| `npm run build` | Type-check and produce the Cloudflare deployment bundle |
-| `npm run preview` | Preview the production bundle in the Workers runtime |
-| `npm run deploy` | Build and deploy with Wrangler |
+| `npm run build` | Type-check and produce the static frontend bundle |
+| `npm run build:pages` | Build the frontend with the production Worker URL |
+| `npm run preview` | Preview the static frontend bundle |
+| `npm run deploy:worker` | Deploy only the API Worker with Wrangler |
+| `npm run deploy:pages` | Build and publish `dist/` to the GitHub Pages branch |
+| `npm run deploy` | Deploy the Worker, then publish GitHub Pages |
 
 ## Upload limits
 
@@ -133,10 +139,18 @@ The Worker returns `400` for invalid inputs, `413` for upload limits, `429` for 
 
 ## Deploy
 
-Wrangler must already be authenticated:
+The production services are:
+
+- Frontend: [http://quick-ocr.thefrenchartist.dev/](http://quick-ocr.thefrenchartist.dev/)
+- Backend: [quick-ocr.louispaulet13.workers.dev](https://quick-ocr.louispaulet13.workers.dev/)
+
+The frontend custom domain is stored in `public/CNAME` as `quick-ocr.thefrenchartist.dev`. GitHub Pages CNAME files contain only the hostname; the public URL includes the `http://` scheme.
+
+Wrangler and GitHub CLI must already be authenticated:
 
 ```sh
 npx wrangler whoami
+gh auth status
 ```
 
 Upload the production key as an encrypted Worker secret. Wrangler prompts for the value without adding it to the repository:
@@ -151,14 +165,21 @@ Build and deploy:
 npm run deploy
 ```
 
-For a first deployment, Wrangler can upload the ignored local `.env` value as an encrypted secret in the same operation:
+`npm run deploy` deploys the Worker with `wrangler.jsonc` first and then runs:
 
-```sh
-npm run build
-npx wrangler deploy --secrets-file .env
+```text
+gh-pages -d dist --remove '**/{*,.*}' --cname quick-ocr.thefrenchartist.dev
 ```
 
-Wrangler prints the production `workers.dev` URL. Static SPA navigation and `/api/*` routing are configured in `wrangler.jsonc`.
+For a first GitHub Pages setup, select the `gh-pages` branch as the Pages source in repository settings, or use the authenticated GitHub CLI:
+
+```sh
+gh api --method POST repos/louispaulet/quick_ocr/pages \
+  -f "source[branch]=gh-pages" \
+  -f "source[path]=/"
+```
+
+HashRouter keeps client-side navigation working without server-side rewrite rules. The Worker configuration contains only the API entrypoint and does not deploy frontend assets.
 
 ## Security and privacy
 

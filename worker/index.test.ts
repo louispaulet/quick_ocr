@@ -55,6 +55,27 @@ describe("handleOcrRequest", () => {
     expect(extract).toHaveBeenCalledOnce();
     expect(extract.mock.calls[0][0]).toHaveLength(2);
     expect(extract.mock.calls[0][1]).toBe("original");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("handles cross-origin preflight requests", async () => {
+    const response = await handleOcrRequest(
+      new Request("https://quick-ocr.louispaulet13.workers.dev/api/ocr", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "http://quick-ocr.thefrenchartist.dev",
+          "Access-Control-Request-Method": "POST",
+        },
+      }),
+      env,
+      vi.fn(),
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "POST, OPTIONS",
+    );
   });
 
   it("passes the selected translation language to the OCR gateway", async () => {
