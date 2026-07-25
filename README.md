@@ -11,7 +11,13 @@ Browser (React + Tailwind)
 POST /api/ocr (Cloudflare Worker)
         │ ordered image inputs
         ▼
-OpenAI Responses API
+OpenAI vision response
+        ▼
+Source-language transcript
+        ├── original selected ───────────────► Result
+        │ English or French selected
+        ▼
+OpenAI text response ───────────────────────► Translated result
 ```
 
 ## Features
@@ -19,6 +25,7 @@ OpenAI Responses API
 - Drag, browse, preview, reorder, and remove document pages.
 - Process up to five ordered PNG, JPG, or WebP images.
 - Preserve the document's original language or translate the result into English or French.
+- Use a dedicated text translation pass for reliable English and French output, including handwritten source documents.
 - Preserve headings, paragraphs, lists, line breaks, and readable table structure.
 - Edit and copy the resulting transcript.
 - Keep the OpenAI API key entirely on the Worker.
@@ -83,6 +90,8 @@ The terminal prints the local URL, normally `http://localhost:5173`.
 - Maximum combined document size: 25 MB
 
 The application does not resize pages before OCR. Clear, upright images with legible text work best.
+
+When English or French is selected, the Worker makes two OpenAI requests: one vision request that faithfully transcribes the source language, followed by one text-only request that translates the transcript. Original-language OCR uses only the vision request.
 
 ## API
 

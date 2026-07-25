@@ -3,7 +3,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildOcrPrompt,
+  buildTranslationInstructions,
   handleOcrRequest,
+  runOcrPipeline,
   type OcrGateway,
   type OcrGatewayFactory,
 } from "./index";
@@ -85,16 +87,70 @@ describe("handleOcrRequest", () => {
     expect(createGateway).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["original", "Do not translate it."],
-    ["en", "into English"],
-    ["fr", "into French"],
-  ] as const)("builds the %s language prompt", (language, expectedText) => {
-    const prompt = buildOcrPrompt(2, language);
+  it("builds a source-language OCR prompt", () => {
+    const prompt = buildOcrPrompt(2);
 
-    expect(prompt).toContain(expectedText);
+    expect(prompt).toContain("Do not translate it.");
     expect(prompt).toContain("--- Page N ---");
     expect(prompt).toContain("[unreadable]");
+  });
+
+  it.each([
+    ["en", "into English"],
+    ["fr", "into French"],
+  ] as const)("builds separate %s translation instructions", (language, expectedText) => {
+    const instructions = buildTranslationInstructions(language);
+
+    expect(instructions).toContain(expectedText);
+    expect(instructions).toContain("Do not leave source-language prose untranslated.");
+    expect(instructions).toContain("page separators");
+    expect(instructions).toContain("[unreadable]");
+  });
+
+  it("uses a separate translation pass for translated output", async () => {
+    const transcribe = vi.fn().mockResolvedValue({
+      text: "--- Page 1 ---\nMeine liebe Dagmar",
+      truncated: false,
+    });
+    const translate = vi.fn().mockResolvedValue({
+      text: "--- Page 1 ---\nMy dear Dagmar",
+      truncated: false,
+    });
+
+    const result = await runOcrPipeline("en", transcribe, translate);
+
+    expect(result).toEqual({
+      text: "--- Page 1 ---\nMy dear Dagmar",
+      truncated: false,
+    });
+    expect(transcribe).toHaveBeenCalledOnce();
+    expect(translate).toHaveBeenCalledWith(
+      "--- Page 1 ---\nMeine liebe Dagmar",
+      "en",
+    );
+  });
+
+  it("does not translate original-language output", async () => {
+    const transcribe = vi.fn().mockResolvedValue({
+      text: "--- Page 1 ---\nMeine liebe Dagmar",
+      truncated: false,
+    });
+    const translate = vi.fn();
+
+    const result = await runOcrPipeline("original", transcribe, translate);
+
+    expect(result.text).toContain("Meine liebe Dagmar");
+    expect(translate).not.toHaveBeenCalled();
+  });
+
+  it("preserves truncation from either pipeline stage", async () => {
+    const result = await runOcrPipeline(
+      "fr",
+      vi.fn().mockResolvedValue({ text: "Guten Morgen", truncated: true }),
+      vi.fn().mockResolvedValue({ text: "Bonjour", truncated: false }),
+    );
+
+    expect(result).toEqual({ text: "Bonjour", truncated: true });
   });
 
   it("returns partial output with a truncation flag", async () => {

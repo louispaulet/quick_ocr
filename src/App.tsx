@@ -256,7 +256,7 @@ function App() {
           </h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
             Add up to five page images, arrange them in reading order, and extract or
-            translate a clean transcript in one pass.
+            translate a clean transcript while keeping the document structure.
           </p>
         </section>
 
