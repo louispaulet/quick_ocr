@@ -77,6 +77,10 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("gpt-5.6-luna")).toBeInTheDocument();
     expect(screen.getByText(/working demonstration of an OCR and translation flow/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View source on GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/louispaulet/quick_ocr",
+    );
 
     await user.click(screen.getByRole("link", { name: "Back to Quick OCR" }));
     expect(screen.getByRole("heading", { name: /Turn document images into editable text/i })).toBeInTheDocument();

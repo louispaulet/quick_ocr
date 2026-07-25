@@ -126,13 +126,21 @@ function AboutPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 flex flex-wrap items-center gap-4">
         <Link
           className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-200 transition hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           to="/"
         >
           Start extracting
         </Link>
+        <a
+          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          href="https://github.com/louispaulet/quick_ocr"
+          rel="noreferrer"
+          target="_blank"
+        >
+          View source on GitHub <span aria-hidden="true">↗</span>
+        </a>
       </div>
     </main>
   );
